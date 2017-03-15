@@ -7,3 +7,5 @@ Solve simple mazes using BFS
 * Set a starting point and destination
 * Click on maze to create or remove walls
 * Click GO! to calculate the shortest path
+
+Demo : https://lakeyang.github.io/MazeSolver/
