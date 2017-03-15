@@ -1,0 +1,338 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Maze Solver</title>
+<script src="jquery-3.1.1.min.js"></script>
+<script src="easeljs-0.8.2.min.js"></script>
+</head>
+
+<body>
+Width:<input id="width" type="text">Height:<input id="height" type="text"><br><input type="button" id="randmaze" value="Generate Random Maze"><input id="emptymaze" type="button" value="Generate Empty Maze"><input type="button" id="blockmaze" value="Generate Block Maze">
+<br>
+<div id="canvas"></div>
+<script>
+var widthbar;
+var heightbar;
+var stage;
+var background;
+var matrix = new Array();
+var blocks;
+var startpoint = new Object();
+var destpoint = new Object();
+startpoint.x = startpoint.y = destpoint.x = destpoint.y = -1;
+function getval(){
+	widthbar = parseInt($("#width").val());
+	heightbar = parseInt($("#height").val());
+}
+function canvasline(){
+	var grid = new createjs.Shape();
+	stage.addChild(grid);
+	for(var i=0;i<=widthbar;i++){
+		grid.graphics.beginStroke("red").moveTo(i*30,0).lineTo(i*30,heightbar*30);  
+	}
+	for(var i=0;i<=heightbar;i++){
+		grid.graphics.beginStroke("red").moveTo(0,i*30).lineTo(widthbar*30,i*30);  
+	}
+	stage.update();
+}
+function renderblock(){
+	blocks.graphics.clear();
+	for(var i=0;i<widthbar;i++){
+		for(var n=0;n<heightbar;n++){
+			if(matrix[i][n]==-1){
+				blocks.graphics.beginStroke("red").beginFill("blue").drawRect(i*30, n*30, 30, 30);
+			}
+			if(matrix[i][n]==-2){
+				blocks.graphics.beginStroke("blue").beginFill("yellow").drawCircle(i*30+15,n*30+15,7);;
+			}
+			if(matrix[i][n]==-3){
+				blocks.graphics.beginStroke("blue").beginFill("red").drawPolyStar(i*30+15,n*30+15,10,5,0.6,-90);
+			}
+			if(matrix[i][n]==-4){
+				blocks.graphics.beginStroke("red").beginFill("green").drawRect(i*30, n*30, 30, 30);
+			}
+		}
+	}
+	stage.update();
+}
+function preparecanvas(){
+	getval();
+	$("#canvas").html('<canvas id="mainCanvas" height="'+30*heightbar+'px" width="'+30*widthbar+'px"></canvas><br><input type="button" id="setstart" value="Set Starting Point"><input type="button" id="setdest" value="Set Destination"><input type="button" id="setcancel" value="Cancel"><br><input type="button" id="gopath" value="GO!">');
+	stage = new createjs.Stage("mainCanvas");
+	createjs.Touch.enable(stage);
+	background = new createjs.Shape();
+	stage.addChild(background);
+	background.graphics.beginStroke("white").beginFill("white").drawRect(0, 0, 30*widthbar, 30*heightbar);
+	canvasline();
+	blocks = new createjs.Shape();
+	stage.addChild(blocks);
+	matrix=[];
+	$("#setcancel").prop('disabled', true);
+	$("#setstart").click(function(event){
+		$("#setstart").prop('disabled', true);
+		$("#setdest").prop('disabled', false);
+		$("#setcancel").prop('disabled', false);
+	});
+	$("#setdest").click(function(event){
+		$("#setstart").prop('disabled', false);
+		$("#setdest").prop('disabled', true);
+		$("#setcancel").prop('disabled', false);
+	});
+	$("#setcancel").click(function(event){
+		$("#setstart").prop('disabled', false);
+		$("#setdest").prop('disabled', false);
+		$("#setcancel").prop('disabled', true);
+	});
+	$("#gopath").click(function(){
+		var result=findpath();
+		if(result==-1){
+			alert("No way out!");
+		}else{
+			alert("The shortest path is "+result+" blocks long.");
+			showpath(result);
+		}
+	});
+}
+function onlistener(callbackFunction){
+	stage.on("mousedown", function(evt) {
+		var posX = Math.floor(evt.stageX/30);
+		var posY = Math.floor(evt.stageY/30);
+		callbackFunction(posX, posY);
+	});
+}
+$("#randmaze").click(function(event){
+	preparecanvas()
+	for(var i=0;i<widthbar;i++){
+		matrix[i] = new Array();
+		for(var n=0;n<heightbar;n++){
+			matrix[i][n]=Math.round(Math.random())-1;
+		}
+	}
+	renderblock();
+	onlistener(function(posX,posY){
+		if($("#setcancel").prop('disabled')==true){
+			if(matrix[posX][posY]==-1){
+				matrix[posX][posY]=0;
+			}else if(matrix[posX][posY]==0){
+				matrix[posX][posY]=-1;
+			}
+		}else{
+			if($("#setstart").prop('disabled')==true){
+				if(startpoint.x!=-1){
+					matrix[startpoint.x][startpoint.y]=0;
+				}
+				matrix[posX][posY]=-2;
+				startpoint.x=posX;
+				startpoint.y=posY;
+			}else{
+				if(destpoint.x!=-1){
+					matrix[destpoint.x][destpoint.y]=0;
+				}
+				matrix[posX][posY]=-3;
+				destpoint.x=posX;
+				destpoint.y=posY;
+			}
+		}		
+		renderblock();
+	});
+});
+$("#emptymaze").click(function(event){
+	preparecanvas()
+	for(var i=0;i<widthbar;i++){
+		matrix[i] = new Array();
+		for(var n=0;n<heightbar;n++){
+			matrix[i][n]=0;
+		}
+	}
+	renderblock();
+	onlistener(function(posX,posY){
+		if($("#setcancel").prop('disabled')==true){
+			if(matrix[posX][posY]==-1){
+				matrix[posX][posY]=0;
+			}else if(matrix[posX][posY]==0){
+				matrix[posX][posY]=-1;
+			}
+		}else{
+			if($("#setstart").prop('disabled')==true){
+				if(startpoint.x!=-1){
+					matrix[startpoint.x][startpoint.y]=0;
+				}
+				matrix[posX][posY]=-2;
+				startpoint.x=posX;
+				startpoint.y=posY;
+			}else{
+				if(destpoint.x!=-1){
+					matrix[destpoint.x][destpoint.y]=0;
+				}
+				matrix[posX][posY]=-3;
+				destpoint.x=posX;
+				destpoint.y=posY;
+			}
+		}		
+		renderblock();
+	});
+});
+$("#blockmaze").click(function(event){
+	preparecanvas()
+	for(var i=0;i<widthbar;i++){
+		matrix[i] = new Array();
+		for(var n=0;n<heightbar;n++){
+			matrix[i][n]=-1;
+		}
+	}
+	renderblock();
+	onlistener(function(posX,posY){
+		if($("#setcancel").prop('disabled')==true){
+			if(matrix[posX][posY]==-1){
+				matrix[posX][posY]=0;
+			}else if(matrix[posX][posY]==0){
+				matrix[posX][posY]=-1;
+			}
+		}else{
+			if($("#setstart").prop('disabled')==true){
+				if(startpoint.x!=-1){
+					matrix[startpoint.x][startpoint.y]=0;
+				}
+				matrix[posX][posY]=-2;
+				startpoint.x=posX;
+				startpoint.y=posY;
+			}else{
+				if(destpoint.x!=-1){
+					matrix[destpoint.x][destpoint.y]=0;
+				}
+				matrix[posX][posY]=-3;
+				destpoint.x=posX;
+				destpoint.y=posY;
+			}
+		}		
+		renderblock();
+	});
+});
+
+
+
+
+//Show the solution. Search number from the destination to the start.
+function showpath(lvt){
+	var posX=destpoint.x;
+	var posY=destpoint.y;
+	for(var lv=lvt-1;1;lv--){
+		if(posX!=0){
+			if(matrix[posX-1][posY]==lv){
+				posX--;
+				matrix[posX][posY]=-4;
+				continue;
+			}
+			if(matrix[posX-1][posY]==-2){
+				break;
+			}
+		}
+		if(posX!=widthbar-1){
+			if(matrix[posX+1][posY]==lv){
+				posX++;
+				matrix[posX][posY]=-4;
+				continue;
+			}
+			if(matrix[posX+1][posY]==-2){
+				break;
+			}
+		}
+		if(posY!=0){
+			if(matrix[posX][posY-1]==lv){
+				posY--;
+				matrix[posX][posY]=-4;
+				continue;
+			}
+			if(matrix[posX][posY-1]==-2){
+				break;
+			}
+		}
+		if(posY!=heightbar-1){
+			if(matrix[posX][posY+1]==lv){
+				posY++;
+				matrix[posX][posY]=-4;
+				continue;
+			}
+			if(matrix[posX][posY+1]==-2){
+				break;
+			}
+		}
+	}
+	renderblock();
+}
+
+
+//Main Function
+function findpath(){
+	if(startpoint.x==-1 || destpoint.x==-1){
+		alert("Set starting point and destination first!");
+		return 0;
+	}
+	//Spread from starting block
+	if(spreadNode(startpoint.x,startpoint.y,1)){
+		//starting point and destination is next to each other
+		return 1;
+	}
+	//Spread every block until no blocks can spread or it has reach the destination
+	for(var lv=1;1;lv++){
+		var found=0;
+		for(var i=0;i<widthbar;i++){
+			for(var n=0;n<heightbar;n++){
+				if(matrix[i][n]==lv){
+					found++;
+					if(spreadNode(i,n,lv+1)){
+						return lv+1;
+						//find a solution
+					}
+				}
+			}
+		}
+		if(found==0){
+			return -1;
+			//No way out
+		}
+	}
+}
+
+//Each block spread its number to blocks nearby and let the number plus by 1.
+function spreadNode(posX,posY,nextLevel){
+	if(posX!=0){
+		if(matrix[posX-1][posY]==0){
+			matrix[posX-1][posY] = nextLevel;
+		}
+		if(matrix[posX-1][posY]==-3){
+			return 1;
+		}
+	}
+	if(posX!=widthbar-1){
+		if(matrix[posX+1][posY]==0){
+			matrix[posX+1][posY] = nextLevel;
+		}
+		if(matrix[posX+1][posY]==-3){
+			return 1;
+		}
+	}
+	if(posY!=0){
+		if(matrix[posX][posY-1]==0){
+			matrix[posX][posY-1] = nextLevel;
+		}
+		if(matrix[posX][posY-1]==-3){
+			return 1;
+		}
+	}
+	if(posY!=heightbar-1){
+		if(matrix[posX][posY+1]==0){
+			matrix[posX][posY+1] = nextLevel;
+		}
+		if(matrix[posX][posY+1]==-3){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
+</script>
+</body>
+</html>
