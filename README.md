@@ -2,7 +2,7 @@
 Solve simple mazes using BFS
 
 # Usage
-* Set maze width and height(interger)
+* Set maze width and height(integer)
 * Click button to generate a maze
 * Set a starting point and destination
 * Click on maze to create or remove walls
